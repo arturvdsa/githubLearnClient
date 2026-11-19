@@ -17,20 +17,21 @@ jobs:
 
       - name: Build mod
         run: |
-          mkdir tpl upd
-          unzip -q "$(ls *template*.zip | head -1)" -d tpl
-          unzip -q "$(ls *update*.zip | head -1)" -d upd
-          T="$(dirname "$(find tpl -name gradlew | head -1)")"
-          rm -rf "$T/src"
-          cp -r upd/src "$T/src"
-          echo 'tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8" }' >> "$T/build.gradle"
-          cd "$T"
+          UPD="$(find . -maxdepth 1 -name '*update*.zip' | head -1)"
+          if [ -z "$UPD" ]; then
+            echo "ОШИБКА: в корне репозитория нет learnclient-1.7-update.zip"
+            ls -la
+            exit 1
+          fi
+          mkdir -p upd
+          unzip -q "$UPD" -d upd
+          rm -rf src
+          cp -r upd/src src
+          echo 'tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8" }' >> build.gradle
           chmod +x gradlew
-          echo "=== MAPPINGS ==="
-          grep -nE "mappings|Mojang" build.gradle || true
-          ./gradlew build --console=plain > "$GITHUB_WORKSPACE/build.log" 2>&1 || { echo "=== ОШИБКИ ==="; grep -A2 "error:" "$GITHUB_WORKSPACE/build.log" | head -70; exit 1; }
-          mkdir -p "$GITHUB_WORKSPACE/out"
-          cp build/libs/*.jar "$GITHUB_WORKSPACE/out/"
+          ./gradlew build --console=plain > build.log 2>&1 || { echo "=== ОШИБКИ ==="; grep -A2 "error:" build.log | head -70; exit 1; }
+          mkdir -p out
+          cp build/libs/*.jar out/
 
       - uses: actions/upload-artifact@v4
         with:
